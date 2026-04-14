@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MCS — Setup Tool</title>
+<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&display=swap" rel="stylesheet">
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getAuth, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyA4A4x0gwP7gTVvzLIMRWYGxcA6xWt9fB4",
+    authDomain: "mcs-sms.firebaseapp.com",
+    databaseURL: "https://mcs-sms-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "mcs-sms",
+    storageBucket: "mcs-sms.firebasestorage.app",
+    messagingSenderId: "676699263817",
+    appId: "1:676699263817:web:8e5d9b19ddb1b9c685c098"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getDatabase(app);
+
+  window.createUser = async function() {
+    const name    = document.getElementById('u_name').value.trim();
+    const email   = document.getElementById('u_email').value.trim();
+    const pass    = document.getElementById('u_pass').value;
+    const role    = document.getElementById('u_role').value;
+
+    if (!name || !email || !pass) {
+      showMsg('সব ঘর পূরণ করুন!', 'error'); return;
+    }
+    if (pass.length < 6) {
+      showMsg('পাসওয়ার্ড কমপক্ষে ৬ অক্ষর হতে হবে!', 'error'); return;
+    }
+
+    const btn = document.getElementById('createBtn');
+    btn.disabled = true;
+    btn.textContent = 'তৈরি হচ্ছে...';
+
+    try {
+      const cred = await createUserWithEmailAndPassword(auth, email, pass);
+      const uid = cred.user.uid;
+
+      const userData = {
+        name,
+        email,
+        role,
+        createdAt: Date.now()
+      };
+
+      if (role === 'teacher') {
+        userData.permissions = {
+          p_attendance: true,
+          p_results: false,
+          p_fees: false
+        };
+      }
+
+      await set(ref(db, `users/${uid}`), userData);
+
+      showMsg(`✅ "${name}" (${role === 'superadmin' ? 'সুপার অ্যাডমিন' : 'শিক্ষক'}) সফলভাবে তৈরি হয়েছে!`, 'success');
+
+      // log it
+      const li = document.createElement('li');
+      li.innerHTML = `<b>${name}</b> — ${email} — <span style="color:${role==='superadmin'?'#1a4f6e':'#27ae60'}">${role==='superadmin'?'সুপার অ্যাডমিন':'শিক্ষক'}</span> ✅`;
+      document.getElementById('createdList').appendChild(li);
+
+      // clear fields
+      document.getElementById('u_name').value = '';
+      document.getElementById('u_email').value = '';
+      document.getElementById('u_pass').value = '';
+
+    } catch(e) {
+      let msg = e.message;
+      if (e.code === 'auth/email-already-in-use') msg = 'এই ইমেইল আগেই ব্যবহার হয়েছে!';
+      if (e.code === 'auth/invalid-email') msg = 'ইমেইল ঠিকানা সঠিক নয়!';
+      showMsg('❌ ত্রুটি: ' + msg, 'error');
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'একাউন্ট তৈরি করুন';
+  };
+
+  function showMsg(msg, type) {
+    const el = document.getElementById('msg');
+    el.textContent = msg;
+    el.style.display = 'block';
+    el.style.background = type === 'success' ? '#d4edda' : '#f8d7da';
+    el.style.color = type === 'success' ? '#155724' : '#721c24';
+    el.style.border = `1px solid ${type === 'success' ? '#c3e6cb' : '#f5c6cb'}`;
+  }
+</script>
+
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Hind Siliguri', sans-serif;
+  background: linear-gradient(135deg, #0f3247, #1a4f6e);
+  min-height: 100vh;
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 32px;
+  width: 100%; max-width: 420px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+h2 {
+  text-align: center;
+  color: #1a4f6e;
+  margin-bottom: 6px;
+  font-size: 1.3rem;
+}
+.sub {
+  text-align: center;
+  color: #888;
+  font-size: 0.8rem;
+  margin-bottom: 24px;
+}
+label {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #4a6070;
+  margin-bottom: 5px;
+  margin-top: 14px;
+}
+input, select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1.5px solid #d8e3ec;
+  border-radius: 8px;
+  font-family: 'Hind Siliguri', sans-serif;
+  font-size: 0.92rem;
+  color: #1a2733;
+  outline: none;
+}
+input:focus, select:focus {
+  border-color: #2a6f96;
+  box-shadow: 0 0 0 3px rgba(42,111,150,0.12);
+}
+button {
+  width: 100%;
+  margin-top: 20px;
+  padding: 12px;
+  background: #1a4f6e;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-family: 'Hind Siliguri', sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+button:hover { background: #2a6f96; }
+button:disabled { opacity: 0.6; cursor: not-allowed; }
+#msg {
+  display: none;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  margin-top: 16px;
+}
+.created-section {
+  margin-top: 24px;
+  border-top: 1px solid #e0e0e0;
+  padding-top: 16px;
+}
+.created-section h4 {
+  font-size: 0.85rem;
+  color: #4a6070;
+  margin-bottom: 10px;
+}
+#createdList {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+#createdList li {
+  background: #f0f4f8;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  color: #1a2733;
+}
+.note {
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 0.8rem;
+  color: #856404;
+  margin-bottom: 20px;
+  text-align: center;
+}
+</style>
+</head>
+<body>
+<div class="card">
+  <h2>🏫 MCS Setup Tool</h2>
+  <p class="sub">মেরিট কেয়ার স্কুল — একাউন্ট তৈরি</p>
+
+  <div class="note">⚠️ শুধুমাত্র প্রথমবার ব্যবহার করুন। একাউন্ট তৈরির পর এই ফাইল মুছে দিন।</div>
+
+  <label>পূর্ণ নাম</label>
+  <input id="u_name" placeholder="যেমন: মোঃ হাশান">
+
+  <label>ইমেইল</label>
+  <input id="u_email" type="email" placeholder="admin@mcs.com">
+
+  <label>পাসওয়ার্ড (কমপক্ষে ৬ অক্ষর)</label>
+  <input id="u_pass" type="password" placeholder="••••••••">
+
+  <label>ভূমিকা</label>
+  <select id="u_role">
+    <option value="superadmin">সুপার অ্যাডমিন (সব ক্ষমতা)</option>
+    <option value="teacher">শিক্ষক (সীমিত ক্ষমতা)</option>
+  </select>
+
+  <button id="createBtn" onclick="createUser()">একাউন্ট তৈরি করুন</button>
+
+  <div id="msg"></div>
+
+  <div class="created-section">
+    <h4>✅ তৈরি হওয়া একাউন্টসমূহ:</h4>
+    <ul id="createdList">
+      <li style="color:#aaa;font-style:italic;">এখনো কোনো একাউন্ট তৈরি হয়নি</li>
+    </ul>
+  </div>
+</div>
+</body>
+</html>
